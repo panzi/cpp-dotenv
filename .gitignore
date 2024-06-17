@@ -1,0 +1,7 @@
+/build
+/tmp
+*.o
+node_modules
+!/build/.gitignore
+!/build/debug/.gitignore
+!/build/release/.gitignore

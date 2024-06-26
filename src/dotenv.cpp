@@ -49,20 +49,38 @@ static inline std::string::size_type skip_ws(std::string_view src, std::string::
 }
 
 static std::string::size_type skip_to_quote_end(std::string_view src, std::string::size_type index, char quote, std::string::size_type& line_start) {
+    // In order to correctly emulate backtracking in the regular expressions
+    // '(\\'|[^'])*' and "(\\"|[^""])*" we need to remember the last escaped
+    // quote and use that if there is no unescaped quote in the rest of the
+    // file.
+    std::string::size_type new_line_start = line_start;
+    std::string::size_type esc_line_start = new_line_start;
+    std::string::size_type esc_index = std::string::npos;
+
     while (index < src.size()) {
         char ch = src[index];
         if (ch == '\\') {
             if (index + 1 < src.size() && src[index + 1] == quote) {
                 ++ index;
+                esc_line_start = new_line_start;
+                esc_index = index;
             }
         } else if (ch == '\n') {
-            line_start = index + 1;
+            new_line_start = index + 1;
         } else if (ch == quote) {
+            line_start = new_line_start;
             return index;
         }
         ++ index;
     }
-    return std::string::npos;
+
+    if (esc_index != std::string::npos) {
+        // SYNTAX ERROR: The last quote in the file is still escaped: \"
+        // Recovering by using that as the end-quote, like the original does:
+        line_start = esc_line_start;
+    }
+
+    return esc_index;
 }
 
 static inline bool is_vardef(char ch) {

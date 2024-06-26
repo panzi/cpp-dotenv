@@ -59,6 +59,8 @@ function printEnv() {
         'VAR42',
         'VAR43',
         'EOF',
+        'FOO',
+        'BAR',
     ]) {
         if (Object.hasOwn(process.env, key)) {
             env[key] = process.env[key];

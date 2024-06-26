@@ -1,17 +1,33 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+set -o pipefail
 
 export PRE_DEFINED="not override"
 
-node printDotenv.js > original.txt
-../build/debug/dotenv --file=edge-cases.env -- node -e 'require("./printEnv.js").printEnv();' > cpp.txt
+mkdir -p output
 
-echo
-if cmp original.txt cpp.txt; then
-    echo 'Output matches!'
-else
-    echo 'Error: Output is different!'>&2
-    echo >&2
-    diff original.txt cpp.txt
+tests=0
+errors=0
+for env in *.env; do
+    echo "testing $env"
+    name=$(basename "$env" .env)
+
+    DOTENV_CONFIG_PATH="$env" node printDotenv.js > "output/$name-original.txt"
+    ../build/debug/dotenv --file="$env" -- node -e 'require("./printEnv.js").printEnv();' > "output/$name-cpp.txt"
+
+    if cmp "output/$name-original.txt" "output/$name-cpp.txt"; then
+        echo "$name: Output matches!"
+    else
+        echo "$name: Error: Output is different!">&2
+        echo >&2
+        diff "output/$name-original.txt" "output/$name-cpp.txt"
+        errors=$((errors+1))
+    fi
+    tests=$((tests+1))
+done
+
+echo "$tests tests, $((tests-errors)) successful, $errors failed"
+
+if [ "$errors" -ne 0 ]; then
+    exit 1
 fi
